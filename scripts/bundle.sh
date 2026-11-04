@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 VERSION=$(tr -d '[:space:]' <VERSION)
 APP=dist/Gatebar.app
 
-echo "Building Gatebar $VERSION…"
+echo "Building Gatebar ${VERSION}..."
 swift build -c release --product Gatebar
 BIN_DIR=$(swift build -c release --show-bin-path)
 
