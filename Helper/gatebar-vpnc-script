@@ -1,0 +1,55 @@
+#!/bin/sh
+
+VPN_DNS="${INTERNAL_IP4_DNS:-}"
+VPN_DOMAINS=$(echo "${GATEBAR_SPLIT_DNS:-} $(echo "${CISCO_SPLIT_DNS:-}" | tr ',' ' ')" | xargs)
+
+if [ -n "$VPN_DOMAINS" ]; then
+	unset INTERNAL_IP4_DNS
+fi
+
+STOCK=""
+for candidate in /opt/homebrew/etc/vpnc/vpnc-script /usr/local/etc/vpnc/vpnc-script \
+	/opt/homebrew/etc/vpnc-script /usr/local/etc/vpnc-script; do
+	if [ -x "$candidate" ]; then
+		STOCK=$candidate
+		break
+	fi
+done
+if [ -z "$STOCK" ]; then
+	echo "gatebar-vpnc-script: vpnc-script not found (it comes with: brew install openconnect)" >&2
+	exit 1
+fi
+
+"$STOCK"
+status=$?
+
+ip_file=""
+case "${GATEBAR_PROFILE:-}" in
+	"" | *[!a-z0-9-]*) ;;
+	*) ip_file="${GATEBAR_RUN_DIR:-/var/run/gatebar}/$GATEBAR_PROFILE.ip" ;;
+esac
+
+case "${reason:-}" in
+	connect)
+		if [ -n "$VPN_DOMAINS" ] && [ -n "$VPN_DNS" ]; then
+			printf 'open\nd.init\nd.add ServerAddresses * %s\nd.add SupplementalMatchDomains * %s\nd.add SearchDomains * %s\nset State:/Network/Service/%s/DNS\nd.init\nd.add Addresses * %s\nd.add SubnetMasks * 255.255.255.255\nd.add InterfaceName %s\nset State:/Network/Service/%s/IPv4\nclose\n' \
+				"$VPN_DNS" "$VPN_DOMAINS" "$VPN_DOMAINS" "$TUNDEV" "$INTERNAL_IP4_ADDRESS" "$TUNDEV" "$TUNDEV" |
+				scutil >/dev/null 2>&1
+		fi
+		if [ -n "$ip_file" ]; then
+			echo "${INTERNAL_IP4_ADDRESS:-}" >"$ip_file"
+			chmod 644 "$ip_file"
+		fi
+		;;
+	disconnect)
+		if [ -n "$VPN_DOMAINS" ]; then
+			printf 'open\nremove State:/Network/Service/%s/DNS\nremove State:/Network/Service/%s/IPv4\nclose\n' \
+				"$TUNDEV" "$TUNDEV" | scutil >/dev/null 2>&1
+		fi
+		if [ -n "$ip_file" ]; then
+			rm -f "$ip_file"
+		fi
+		;;
+esac
+
+exit $status

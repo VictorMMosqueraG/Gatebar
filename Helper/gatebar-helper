@@ -1,0 +1,157 @@
+#!/bin/sh
+
+set -eu
+set -f
+PATH=/usr/bin:/bin:/usr/sbin:/sbin
+export PATH
+umask 022
+
+CONFIG_DIR="/Library/Application Support/Gatebar/vpn"
+RUN_DIR=/var/run/gatebar
+VPNC_SCRIPT=/Library/PrivilegedHelperTools/gatebar-vpnc-script
+
+die() {
+	echo "gatebar-helper: $*" >&2
+	exit 64
+}
+
+matches() {
+	printf '%s\n' "$1" | grep -Eq "$2"
+}
+
+valid_id() {
+	matches "$1" '^[a-z0-9][a-z0-9-]{0,39}$' || die "invalid profile id"
+}
+
+find_openconnect() {
+	for candidate in /opt/homebrew/bin/openconnect /usr/local/bin/openconnect; do
+		if [ -x "$candidate" ]; then
+			echo "$candidate"
+			return 0
+		fi
+	done
+	return 1
+}
+
+read_conf() {
+	SERVER=""
+	PROTOCOL=""
+	VPN_USER=""
+	SERVERCERT=""
+	SPLIT_DNS=""
+	while IFS= read -r line || [ -n "$line" ]; do
+		key=${line%%=*}
+		value=${line#*=}
+		case "$key" in
+			SERVER) SERVER=$value ;;
+			PROTOCOL) PROTOCOL=$value ;;
+			USER) VPN_USER=$value ;;
+			SERVERCERT) SERVERCERT=$value ;;
+			SPLIT_DNS) SPLIT_DNS=$value ;;
+			"" | "#"*) ;;
+			*) die "unknown setting: $key" ;;
+		esac
+	done <"$1"
+}
+
+validate_conf() {
+	matches "$SERVER" '^https://[A-Za-z0-9.:/_-]+$' || die "invalid SERVER"
+	case "$PROTOCOL" in
+		gp | anyconnect | fortinet | pulse | nc | f5 | array) ;;
+		*) die "invalid PROTOCOL" ;;
+	esac
+	matches "$VPN_USER" '^[A-Za-z0-9._@][A-Za-z0-9._@-]*$' || die "invalid USER"
+	if [ -n "$SERVERCERT" ]; then
+		matches "$SERVERCERT" '^(pin-sha256:[A-Za-z0-9+/=]+|sha1:[0-9a-fA-F]+|sha256:[0-9a-fA-F]+)$' || die "invalid SERVERCERT"
+	fi
+	for domain in $SPLIT_DNS; do
+		matches "$domain" '^[A-Za-z0-9][A-Za-z0-9.-]*$' || die "invalid SPLIT_DNS"
+	done
+}
+
+running_pid() {
+	pidfile="$RUN_DIR/$1.pid"
+	[ -f "$pidfile" ] || return 1
+	pid=$(cat "$pidfile")
+	case "$pid" in
+		"" | *[!0-9]*) return 1 ;;
+	esac
+	case "$(ps -p "$pid" -o comm= 2>/dev/null || true)" in
+		*openconnect*) echo "$pid" ;;
+		*) return 1 ;;
+	esac
+}
+
+command=${1:-}
+case "$command" in
+	connect)
+		[ $# -eq 2 ] || die "usage: connect <id>"
+		id=$2
+		valid_id "$id"
+		conf="$CONFIG_DIR/$id.conf"
+		[ -f "$conf" ] || die "profile $id is not installed"
+		read_conf "$conf"
+		validate_conf
+		openconnect=$(find_openconnect) || die "openconnect not found (brew install openconnect)"
+		[ -x "$VPNC_SCRIPT" ] || die "vpnc script missing: reinstall the system component"
+		if running_pid "$id" >/dev/null; then
+			die "profile $id is already connected"
+		fi
+		mkdir -p "$RUN_DIR"
+		chmod 755 "$RUN_DIR"
+		rm -f "$RUN_DIR/$id.ip"
+		echo $$ >"$RUN_DIR/$id.pid"
+		chmod 644 "$RUN_DIR/$id.pid"
+		GATEBAR_PROFILE=$id
+		GATEBAR_SPLIT_DNS=$SPLIT_DNS
+		GATEBAR_RUN_DIR=$RUN_DIR
+		LC_ALL=C
+		LANG=C
+		export GATEBAR_PROFILE GATEBAR_SPLIT_DNS GATEBAR_RUN_DIR LC_ALL LANG
+		set -- --protocol="$PROTOCOL" --user="$VPN_USER" --passwd-on-stdin --non-inter --script "$VPNC_SCRIPT"
+		if [ -n "$SERVERCERT" ]; then
+			set -- "$@" --servercert "$SERVERCERT"
+		fi
+		exec "$openconnect" "$@" "$SERVER"
+		;;
+
+	disconnect)
+		[ $# -eq 2 ] || die "usage: disconnect <id>"
+		id=$2
+		valid_id "$id"
+		if pid=$(running_pid "$id"); then
+			kill -INT "$pid"
+		fi
+		;;
+
+	install-profile)
+		[ "$(id -u)" -eq 0 ] || die "must run as root"
+		[ $# -eq 3 ] || die "usage: install-profile <id> <file>"
+		id=$2
+		valid_id "$id"
+		[ -f "$3" ] || die "file not found: $3"
+		mkdir -p "$CONFIG_DIR"
+		chown root:wheel "$CONFIG_DIR"
+		chmod 755 "$CONFIG_DIR"
+		tmp=$(mktemp "$CONFIG_DIR/.install.XXXXXX")
+		trap 'rm -f "$tmp"' EXIT
+		cat "$3" >"$tmp"
+		read_conf "$tmp"
+		validate_conf
+		chown root:wheel "$tmp"
+		chmod 644 "$tmp"
+		mv "$tmp" "$CONFIG_DIR/$id.conf"
+		trap - EXIT
+		;;
+
+	remove-profile)
+		[ "$(id -u)" -eq 0 ] || die "must run as root"
+		[ $# -eq 2 ] || die "usage: remove-profile <id>"
+		valid_id "$2"
+		rm -f "$CONFIG_DIR/$2.conf"
+		;;
+
+	*)
+		die "usage: gatebar-helper connect|disconnect|install-profile|remove-profile <id>"
+		;;
+esac

@@ -1,0 +1,13 @@
+.DS_Store
+/.build/
+/.swiftpm/
+/dist/
+/Packages/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+Package.resolved
+
+# Never commit real gateway settings
+profiles.json
+*.conf

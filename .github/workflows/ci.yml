@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+      - name: Lint helper scripts
+        run: |
+          brew install shellcheck
+          shellcheck -s sh Helper/gatebar-helper Helper/gatebar-vpnc-script Helper/install.sh Helper/uninstall.sh scripts/bundle.sh
+
+      - name: Bundle app
+        run: scripts/bundle.sh --zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gatebar
+          path: dist/Gatebar-*.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/bundle.sh --zip
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/Gatebar-*.zip --generate-notes

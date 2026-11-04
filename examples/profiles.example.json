@@ -1,0 +1,31 @@
+[
+  {
+    "id": "acme-vpn",
+    "name": "ACME VPN",
+    "type": "openconnect",
+    "openconnect": {
+      "server": "https://vpn.acme.example",
+      "protocol": "gp",
+      "user": "jdoe",
+      "serverCert": "pin-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "splitDNS": ["acme.internal"]
+    }
+  },
+  {
+    "id": "shop-prod",
+    "name": "Shop bastion",
+    "type": "aws-bastion",
+    "awsBastion": {
+      "region": "us-east-1",
+      "securityGroupId": "sg-0123456789abcdef0",
+      "port": 22,
+      "maxOpenHours": 8,
+      "awsProfile": "shop",
+      "sshHosts": [
+        { "label": "Prod", "host": "shop-prod" },
+        { "label": "QA", "host": "shop-qa" },
+        { "label": "Bastion", "host": "shop-bastion" }
+      ]
+    }
+  }
+]
