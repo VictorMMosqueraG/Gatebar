@@ -326,6 +326,7 @@ struct OpenConnectFields: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        SSHHostsSection(hosts: $settings.sshHosts)
     }
 }
 
@@ -350,15 +351,23 @@ struct AWSBastionFields: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        Section(L.t("SSH terminals", "Terminales SSH")) {
-            ForEach($settings.sshHosts) { $host in
+        SSHHostsSection(hosts: $settings.sshHosts)
+    }
+}
+
+struct SSHHostsSection: View {
+    @Binding var hosts: [SSHHost]
+
+    var body: some View {
+        Section {
+            ForEach($hosts) { $host in
                 HStack {
                     TextField(L.t("Name", "Nombre"), text: $host.label, prompt: Text("Prod"))
                     TextField(L.t("Host or ~/.ssh/config alias", "Host o alias de ~/.ssh/config"), text: $host.host,
                               prompt: Text("prod-server"))
                     Button {
                         let id = host.id
-                        settings.sshHosts.removeAll { $0.id == id }
+                        hosts.removeAll { $0.id == id }
                     } label: {
                         Image(systemName: "trash")
                     }
@@ -367,8 +376,15 @@ struct AWSBastionFields: View {
                 .labelsHidden()
             }
             Button(L.t("Add terminal", "Agregar terminal")) {
-                settings.sshHosts.append(SSHHost(label: "", host: ""))
+                hosts.append(SSHHost(label: "", host: ""))
             }
+        } header: {
+            Text(L.t("SSH terminals", "Terminales SSH"))
+        } footer: {
+            Text(L.t("Each one opens Terminal with ssh <host>. If the gateway is closed, Gatebar opens it first.",
+                     "Cada una abre Terminal con ssh <host>. Si la puerta está cerrada, Gatebar la abre primero."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }

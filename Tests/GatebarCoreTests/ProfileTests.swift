@@ -18,6 +18,7 @@ final class ProfileTests: XCTestCase {
         XCTAssertEqual(profiles.count, 2)
         XCTAssertEqual(profiles[0].openconnect?.vpnProtocol, "gp")
         XCTAssertEqual(profiles[0].openconnect?.splitDNS, [])
+        XCTAssertEqual(profiles[0].openconnect?.sshHosts, [])
         XCTAssertEqual(profiles[1].awsBastion?.port, 22)
         XCTAssertEqual(profiles[1].awsBastion?.maxOpenHours, 8)
         XCTAssertEqual(profiles[1].awsBastion?.sshHosts, [])
@@ -47,6 +48,15 @@ final class ProfileTests: XCTestCase {
         settings.splitDNS = ["corp.example.com"]
         settings.serverCert = "pin-sha256:Q2hhbmdlTWU+/="
         XCTAssertTrue(settings.validate().isEmpty)
+    }
+
+    func testVPNTerminals() throws {
+        var settings = OpenConnectSettings(server: "https://vpn.example.com", user: "jdoe",
+                                           sshHosts: [SSHHost(label: "App", host: "app-server")])
+        XCTAssertTrue(settings.validate().isEmpty)
+        settings.sshHosts.append(SSHHost(label: "", host: "-oProxyCommand=evil"))
+        XCTAssertEqual(settings.validate().count, 2)
+        XCTAssertFalse(HelperConfig.render(settings).contains("app-server"))
     }
 
     func testBastionValidation() {

@@ -20,7 +20,7 @@ Si el proveedor necesita root, amplía `Helper/gatebar-helper` con las mismas re
 | `state` | `inactive`, `working`, `active` o `failed`, con un texto de detalle. |
 | `shortStatus` | Una o dos palabras para el título del menú ("conectada", "cerrado"). |
 | `toggleTitle` / `canToggle` | Texto y disponibilidad del botón principal. |
-| `actions` | Entradas extra del submenú (terminales, ver log…). |
+| `actions` | Entradas extra del submenú (terminales, ver log…). Para terminales SSH usa `SSHLauncher` y `SSHHostsSection` en Ajustes. |
 | `onChange` / `onAlert` | Los asigna la app: avisar que cambió el estado o mostrar un mensaje. |
 | `start()` | Se llama una vez al crearla: retomar lo que haya quedado abierto. |
 | `toggle()` | Abrir o cerrar. |

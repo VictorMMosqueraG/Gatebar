@@ -98,6 +98,7 @@ extension OpenConnectSettings {
         for domain in splitDNS where !fullMatch(domain, Patterns.domain) {
             errors.append(.init("splitDNS", L.t("Invalid domain: \(domain)", "Dominio no válido: \(domain)")))
         }
+        errors += validateSSHHosts(sshHosts)
         return errors
     }
 }
@@ -123,14 +124,20 @@ extension AWSBastionSettings {
         if !fullMatch(effectiveRuleDescription, Patterns.ruleDescription) {
             errors.append(.init("ruleDescription", L.t("Invalid rule description.", "Descripción de regla no válida.")))
         }
-        for host in sshHosts {
-            if host.label.trimmingCharacters(in: .whitespaces).isEmpty {
-                errors.append(.init("sshHosts", L.t("Every terminal needs a name.", "Cada terminal necesita un nombre.")))
-            }
-            if !fullMatch(host.host, Patterns.sshHost) {
-                errors.append(.init("sshHosts", L.t("Invalid SSH host: \(host.host)", "Host SSH no válido: \(host.host)")))
-            }
-        }
+        errors += validateSSHHosts(sshHosts)
         return errors
     }
+}
+
+func validateSSHHosts(_ hosts: [SSHHost]) -> [ValidationError] {
+    var errors: [ValidationError] = []
+    for host in hosts {
+        if host.label.trimmingCharacters(in: .whitespaces).isEmpty {
+            errors.append(.init("sshHosts", L.t("Every terminal needs a name.", "Cada terminal necesita un nombre.")))
+        }
+        if !fullMatch(host.host, Patterns.sshHost) {
+            errors.append(.init("sshHosts", L.t("Invalid SSH host: \(host.host)", "Host SSH no válido: \(host.host)")))
+        }
+    }
+    return errors
 }

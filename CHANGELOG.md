@@ -7,4 +7,5 @@
 - Proveedor de VPN con openconnect: DNS dividido, reconexión al cambiar de red y helper de root restringido.
 - Proveedor de bastión AWS: abre el security group solo para tu IP pública, sigue los cambios de IP, cierra al salir o al vencer el tiempo y abre terminales SSH con un clic.
 - Ventana de Ajustes para agregar, editar y quitar puertas; contraseñas en el Llavero.
+- Terminales SSH con un clic también en las VPN (se conecta primero si hace falta).
 - Interfaz en español e inglés.

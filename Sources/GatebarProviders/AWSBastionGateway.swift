@@ -56,7 +56,7 @@ public final class AWSBastionGateway: Gateway {
 
     public var actions: [GatewayAction] {
         settings.sshHosts.map { host in
-            GatewayAction(title: L.t("Terminal: \(host.label)", "Terminal: \(host.label)"), isEnabled: !busy) { [weak self] in
+            GatewayAction(title: SSHLauncher.actionTitle(host), isEnabled: !busy) { [weak self] in
                 self?.openTerminal(host)
             }
         }
@@ -132,13 +132,8 @@ public final class AWSBastionGateway: Gateway {
     private func openTerminal(_ host: SSHHost) {
         let launch = { [weak self] in
             guard let self else { return }
-            let safeName = host.host.map { $0.isLetter || $0.isNumber || $0 == "-" ? $0 : "_" }
-            let script = Paths.sshLaunchers.appendingPathComponent("\(self.profile.id)-\(String(safeName)).command")
             do {
-                try FileManager.default.createDirectory(at: Paths.sshLaunchers, withIntermediateDirectories: true)
-                try "#!/bin/sh\nexec ssh \(Shell.quote(host.host))\n".write(to: script, atomically: true, encoding: .utf8)
-                try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
-                Shell.run("/usr/bin/open", [script.path])
+                try SSHLauncher.open(host, profileID: self.profile.id)
             } catch {
                 self.onAlert?(error.localizedDescription)
             }

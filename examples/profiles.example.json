@@ -8,7 +8,19 @@
       "protocol": "gp",
       "user": "jdoe",
       "serverCert": "pin-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-      "splitDNS": ["acme.internal"]
+      "splitDNS": [
+        "acme.internal"
+      ],
+      "sshHosts": [
+        {
+          "label": "App",
+          "host": "acme-app"
+        },
+        {
+          "label": "Base de datos",
+          "host": "acme-db"
+        }
+      ]
     }
   },
   {
@@ -22,9 +34,18 @@
       "maxOpenHours": 8,
       "awsProfile": "shop",
       "sshHosts": [
-        { "label": "Prod", "host": "shop-prod" },
-        { "label": "QA", "host": "shop-qa" },
-        { "label": "Bastion", "host": "shop-bastion" }
+        {
+          "label": "Prod",
+          "host": "shop-prod"
+        },
+        {
+          "label": "QA",
+          "host": "shop-qa"
+        },
+        {
+          "label": "Bastion",
+          "host": "shop-bastion"
+        }
       ]
     }
   }

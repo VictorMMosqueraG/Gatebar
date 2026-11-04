@@ -82,18 +82,20 @@ public struct OpenConnectSettings: Codable, Equatable {
     public var user: String
     public var serverCert: String?
     public var splitDNS: [String]
+    public var sshHosts: [SSHHost]
 
     enum CodingKeys: String, CodingKey {
-        case server, vpnProtocol = "protocol", user, serverCert, splitDNS
+        case server, vpnProtocol = "protocol", user, serverCert, splitDNS, sshHosts
     }
 
     public init(server: String = "", vpnProtocol: String = "gp", user: String = "",
-                serverCert: String? = nil, splitDNS: [String] = []) {
+                serverCert: String? = nil, splitDNS: [String] = [], sshHosts: [SSHHost] = []) {
         self.server = server
         self.vpnProtocol = vpnProtocol
         self.user = user
         self.serverCert = serverCert
         self.splitDNS = splitDNS
+        self.sshHosts = sshHosts
     }
 
     public init(from decoder: Decoder) throws {
@@ -103,6 +105,7 @@ public struct OpenConnectSettings: Codable, Equatable {
         user = try c.decode(String.self, forKey: .user)
         serverCert = try c.decodeIfPresent(String.self, forKey: .serverCert)
         splitDNS = try c.decodeIfPresent([String].self, forKey: .splitDNS) ?? []
+        sshHosts = try c.decodeIfPresent([SSHHost].self, forKey: .sshHosts) ?? []
     }
 }
 

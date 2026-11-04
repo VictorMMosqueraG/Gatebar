@@ -9,7 +9,7 @@ En vez de recordar comandos, entrar a la consola de AWS para autorizar tu IP o t
 ```
 🚪 ●
 ├── ● VPN ACME: conectada            ▸  Conectada (10.20.0.14)
-│                                        Desconectar · Ver log
+│                                        Desconectar · Terminal: App · Ver log
 ├── ● Bastión Shop: abierto          ▸  Puerto 22 abierto para 181.x.x.x · se cierra en 7 h 12 min
 │                                        Cerrar acceso · Terminal: Prod · Terminal: QA
 ├── ○ VPN proyecto personal: desconectada
@@ -21,7 +21,7 @@ En vez de recordar comandos, entrar a la consola de AWS para autorizar tu IP o t
 
 - **VPNs** con [openconnect](https://www.infradead.org/openconnect/): Palo Alto GlobalProtect, Cisco AnyConnect, Fortinet, Pulse/Ivanti, Juniper, F5 y Array. Con **DNS dividido**: solo los dominios del proyecto pasan por el túnel y el Mac sigue funcionando cuando cambias de red.
 - **Bastiones en AWS:** abre el puerto del security group solo para tu IP pública actual (/32), se ajusta si tu IP cambia y lo cierra al cerrarlo, al salir de la app o al cumplirse un tiempo límite.
-- **Terminales SSH con un clic** a los servidores que hay detrás de cada puerta.
+- **Terminales SSH con un clic** a los servidores que hay detrás de cada puerta, tanto en VPNs como en bastiones. Si la puerta está cerrada, Gatebar la abre primero.
 - **Perfiles, no código:** agregas, renombras o quitas puertas desde la ventana de Ajustes. Las contraseñas quedan en el Llavero de macOS.
 - **Reconecta** la VPN al cambiar de Wi-Fi y retoma túneles y puertos abiertos si reinicias la app.
 - **Varias VPNs a la vez**, cada una con su propio estado.
@@ -77,6 +77,7 @@ Ajustes guarda todo en `~/Library/Application Support/Gatebar/profiles.json`. Ta
 | `user` | Usuario. La contraseña va al Llavero (servicio `Gatebar`). |
 | `serverCert` | Opcional. Pin del certificado, por ejemplo `pin-sha256:…`. openconnect lo muestra la primera vez que conectas. |
 | `splitDNS` | Dominios que se resuelven por la VPN. Si lo dejas vacío, todo el DNS pasa por la VPN. |
+| `sshHosts` | Opcional. Terminales SSH que se abren con un clic: `[{ "label": "App", "host": "alias-en-ssh-config" }]`. Si la VPN está desconectada, Gatebar conecta primero. |
 
 ### Bastión AWS (`aws-bastion`)
 
@@ -88,7 +89,7 @@ Ajustes guarda todo en `~/Library/Application Support/Gatebar/profiles.json`. Ta
 | `maxOpenHours` | La regla se quita sola después de estas horas. Por defecto 8. |
 | `awsProfile` | Opcional. Perfil del AWS CLI. |
 | `ruleDescription` | Opcional. Por defecto `gatebar-<tu usuario>`. Gatebar la usa para reconocer sus propias reglas. |
-| `sshHosts` | `[{ "label": "Prod", "host": "alias-en-ssh-config" }]` |
+| `sshHosts` | Opcional. Igual que en la VPN: `[{ "label": "Prod", "host": "alias-en-ssh-config" }]`. Si el acceso está cerrado, Gatebar lo abre primero. |
 
 El usuario de AWS necesita `ec2:DescribeSecurityGroupRules`, `ec2:AuthorizeSecurityGroupIngress` y `ec2:RevokeSecurityGroupIngress` sobre ese security group.
 

@@ -6,7 +6,10 @@ public final class OpenConnectGateway: Gateway {
     public var onChange: (() -> Void)?
     public var onAlert: ((String) -> Void)?
     public private(set) var state: GatewayState = .inactive(L.t("Disconnected", "Desconectada")) {
-        didSet { onChange?() }
+        didSet {
+            launchPendingTerminal()
+            onChange?()
+        }
     }
 
     private let settings: OpenConnectSettings
@@ -19,6 +22,7 @@ public final class OpenConnectGateway: Gateway {
     private var restartPending = false
     private var preparing = false
     private var networkAtConnect: String?
+    private var pendingTerminal: SSHHost?
 
     public init(profile: Profile, settings: OpenConnectSettings) {
         self.profile = profile
@@ -46,7 +50,12 @@ public final class OpenConnectGateway: Gateway {
     public var canToggle: Bool { !preparing }
 
     public var actions: [GatewayAction] {
-        [GatewayAction(title: L.t("Show log", "Ver log")) { [weak self] in self?.openLog() }]
+        let terminals = settings.sshHosts.map { host in
+            GatewayAction(title: SSHLauncher.actionTitle(host), isEnabled: canToggle) { [weak self] in
+                self?.openTerminal(host)
+            }
+        }
+        return terminals + [GatewayAction(title: L.t("Show log", "Ver log")) { [weak self] in self?.openLog() }]
     }
 
     public func start() {
@@ -271,6 +280,40 @@ public final class OpenConnectGateway: Gateway {
     private func connectedText(_ ip: String?) -> String {
         if let ip { return L.t("Connected (\(ip))", "Conectada (\(ip))") }
         return L.t("Connected", "Conectada")
+    }
+
+    private func openTerminal(_ host: SSHHost) {
+        switch state {
+        case .active:
+            launch(host)
+        case .working:
+            pendingTerminal = host
+        case .inactive, .failed:
+            pendingTerminal = host
+            connect()
+        }
+    }
+
+    private func launchPendingTerminal() {
+        switch state {
+        case .active:
+            if let host = pendingTerminal {
+                pendingTerminal = nil
+                launch(host)
+            }
+        case .inactive, .failed:
+            pendingTerminal = nil
+        case .working:
+            break
+        }
+    }
+
+    private func launch(_ host: SSHHost) {
+        do {
+            try SSHLauncher.open(host, profileID: profile.id)
+        } catch {
+            onAlert?(error.localizedDescription)
+        }
     }
 
     private func openLog() {
